@@ -15,5 +15,3 @@ configure_file(${CMAKE_SOURCE_DIR}/shaders/shader.fs ${CMAKE_CURRENT_BINARY_DIR}
 add_executable(FacialExps ${SOURCE_FILES})
 
 target_link_libraries(FacialExps glfw)
-
-
