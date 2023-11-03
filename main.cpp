@@ -1,23 +1,31 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
 
+#include <filesystem>
 #include <iostream>
 #include <shader.h>
 #include <tiny_obj_loader.h>
 #include <vector>
 
-void framebufferSizeCallback(GLFWwindow *window, int width, int height);
+void dump_framebuffer_to_ppm(std::string prefix, uint32_t width,
+                             uint32_t height);
 
-void processInput(GLFWwindow *window);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
-bool parseObjFile(const char *obj_path, std::vector<float> *vbuffer,
-                  std::vector<float> *nbuffer);
+void process_input(GLFWwindow *window);
 
-// settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+bool parse_obj_file(const char *obj_path, std::vector<float> *vbuffer,
+                    std::vector<float> *nbuffer);
+
+static uint32_t ss_id = 0;
+
+const unsigned int SCR_WIDTH = 1024;
+const unsigned int SCR_HEIGHT = 768;
 
 int main() {
   // glfw: initialize and configure
@@ -32,14 +40,14 @@ int main() {
 
   // glfw window creation
   GLFWwindow *window =
-      glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+      glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Facial Expressions", NULL, NULL);
   if (window == NULL) {
     std::cout << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
     return -1;
   }
   glfwMakeContextCurrent(window);
-  glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
   // glad: load all OpenGL function pointers
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -49,25 +57,73 @@ int main() {
 
   // configure global OpenGL state
   glEnable(GL_DEPTH_TEST);
+  // glEnable(GL_CULL_FACE);
+  // glCullFace(GL_BACK);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
-  const char* obj_path = "data/cube.obj";
+  const char *obj_path = "data/cube.obj";
 
   std::vector<float> vbuffer;
   std::vector<float> nbuffer;
 
-  bool parsed = parseObjFile(obj_path, &vbuffer, &nbuffer);
-  if(!parsed){
-    std::cout << "Failed to parse OBJ file" << std::endl;
+  bool parsed = parse_obj_file(obj_path, &vbuffer, &nbuffer);
+  if (!parsed) {
     return -1;
   }
 
+  GLuint VAO, VBO_vertices, VBO_normals;
+  glGenVertexArrays(1, &VAO);
+  glBindVertexArray(VAO);
+
+  // bind vertex array to vertex buffer
+  glGenBuffers(1, &VBO_vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_vertices);
+  glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(float), vbuffer.data(),
+               GL_STATIC_DRAW);
+
+  // position attribute
+  GLuint vertex_loc = shader.getAttribLocation("aPos");
+  glVertexAttribPointer(vertex_loc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+                        (void *)0);
+  glEnableVertexAttribArray(vertex_loc);
+
+  // bind normal array to normal buffer
+  glGenBuffers(1, &VBO_normals);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_normals);
+  glBufferData(GL_ARRAY_BUFFER, nbuffer.size() * sizeof(float), nbuffer.data(),
+               GL_STATIC_DRAW);
+
+  // normal attribute
+  GLuint normal_loc = shader.getAttribLocation("aNormal");
+  glVertexAttribPointer(normal_loc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+                        (void *)0);
+  glEnableVertexAttribArray(normal_loc);
+
+  glm::mat4 model = glm::mat4(1.0f);
+  glm::mat4 view =
+      glm::lookAt(glm::vec3(-2, 6, 5), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+  glm::mat4 proj =
+      glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
 
   // render loop
   while (!glfwWindowShouldClose(window)) {
-    processInput(window);
+    process_input(window);
+
+    // background color
+    glClearColor(0.3f, 0.4f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // activate shader
+    shader.use();
+    shader.setMat4("model", model);
+    shader.setMat4("view", view);
+    shader.setMat4("projection", proj);
+
+    // render container
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 
     // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
     // etc.)
@@ -80,8 +136,8 @@ int main() {
   return 0;
 }
 
-bool parseObjFile(const char *obj_path, std::vector<float> *vbuffer,
-                  std::vector<float> *nbuffer) {
+bool parse_obj_file(const char *obj_path, std::vector<float> *vbuffer,
+                    std::vector<float> *nbuffer) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
@@ -115,15 +171,51 @@ bool parseObjFile(const char *obj_path, std::vector<float> *vbuffer,
 
 // process all input: query GLFW whether relevant keys are pressed/released this
 // frame and react accordingly
-void processInput(GLFWwindow *window) {
+void process_input(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
+
+  // press p to capture screen
+  if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+    std::cout << "Capture Window " << ss_id << std::endl;
+    int buffer_width, buffer_height;
+    glfwGetFramebufferSize(window, &buffer_width, &buffer_height);
+    dump_framebuffer_to_ppm("tmp", buffer_width, buffer_height);
+  }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback
 // function executes
-void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   // make sure the viewport matches the new window dimensions; note that width
   // and height will be significantly larger than specified on retina displays.
   glViewport(0, 0, width, height);
+}
+
+void dump_framebuffer_to_ppm(std::string prefix, uint32_t width,
+                             uint32_t height) {
+  int pixelChannel = 3;
+  int totalPixelSize = pixelChannel * width * height * sizeof(GLubyte);
+  GLubyte *pixels = new GLubyte[totalPixelSize];
+  glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+  std::string fileName = prefix + std::to_string(ss_id) + ".ppm";
+  std::filesystem::path filePath = std::filesystem::current_path() / fileName;
+  std::ofstream fout(filePath.string());
+
+  fout << "P3\n" << width << " " << height << "\n" << 255 << std::endl;
+  for (size_t i = 0; i < height; i++) {
+    for (size_t j = 0; j < width; j++) {
+      size_t cur = pixelChannel * ((height - i - 1) * width + j);
+      fout << (int)pixels[cur] << " " << (int)pixels[cur + 1] << " "
+           << (int)pixels[cur + 2] << " ";
+    }
+    fout << std::endl;
+  }
+
+  ss_id++;
+
+  delete[] pixels;
+  fout.flush();
+  fout.close();
 }

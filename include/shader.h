@@ -11,8 +11,6 @@
 
 class Shader {
 public:
-    unsigned int ID;
-
     // constructor generates the shader on the fly
     Shader(const char *vertexPath, const char *fragmentPath) {
         // retrieve the vertex/fragment source code from filePath
@@ -82,6 +80,10 @@ public:
     }
 
     // utility uniform functions
+    GLuint getAttribLocation(const std::string &name){
+        return glGetAttribLocation(ID, name.c_str());
+    }
+
     void setBool(const std::string &name, bool value) const {
         glUniform1i(glGetUniformLocation(ID, name.c_str()), (int) value);
     }
@@ -140,6 +142,8 @@ public:
     }
 
 private:
+    unsigned int ID;
+
     // utility function for checking shader compilation/linking errors.
     static void checkCompileErrors(unsigned int shader, const std::string& type) {
         int success;
