@@ -11,6 +11,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 configure_file(${CMAKE_SOURCE_DIR}/shaders/shader.vs ${CMAKE_CURRENT_BINARY_DIR}/shaders/shader.vs COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/shaders/shader.fs ${CMAKE_CURRENT_BINARY_DIR}/shaders/shader.fs COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/data/cube.obj ${CMAKE_CURRENT_BINARY_DIR}/data/cube.obj COPYONLY)
 
 add_executable(FacialExps ${SOURCE_FILES})
 

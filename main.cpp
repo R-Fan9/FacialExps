@@ -53,7 +53,7 @@ int main() {
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
-  const char* obj_path = "/home/rfan/code/OpenGL/facialExps/data/cube.obj";
+  const char* obj_path = "data/cube.obj";
 
   std::vector<float> vbuffer;
   std::vector<float> nbuffer;
