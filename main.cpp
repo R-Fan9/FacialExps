@@ -57,8 +57,9 @@ int main() {
 
   // configure global OpenGL state
   glEnable(GL_DEPTH_TEST);
-  // glEnable(GL_CULL_FACE);
-  // glCullFace(GL_BACK);
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
@@ -76,6 +77,7 @@ int main() {
   GLuint VAO, VBO_vertices, VBO_normals;
   glGenVertexArrays(1, &VAO);
   glBindVertexArray(VAO);
+  
 
   // bind vertex array to vertex buffer
   glGenBuffers(1, &VBO_vertices);
