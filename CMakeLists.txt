@@ -9,8 +9,8 @@ set(SOURCE_FILES main.cpp glad.c)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-configure_file(${CMAKE_SOURCE_DIR}/shaders/shader.vs ${CMAKE_CURRENT_BINARY_DIR}/shaders/shader.vs COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/shaders/shader.fs ${CMAKE_CURRENT_BINARY_DIR}/shaders/shader.fs COPYONLY)
+file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/data DESTINATION ${CMAKE_BINARY_DIR})
 
 add_executable(FacialExps ${SOURCE_FILES})
 
