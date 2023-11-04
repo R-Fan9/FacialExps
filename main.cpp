@@ -59,12 +59,12 @@ int main() {
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
-  const char *obj_path = "data/cube.obj";
+  const char *obj_path = "data/faces/28.obj";
 
   std::vector<float> vbuffer;
   std::vector<float> nbuffer;
@@ -74,10 +74,11 @@ int main() {
     return -1;
   }
 
+  std::cout << vbuffer.size() << std::endl;
+
   GLuint VAO, VBO_vertices, VBO_normals;
   glGenVertexArrays(1, &VAO);
   glBindVertexArray(VAO);
-  
 
   // bind vertex array to vertex buffer
   glGenBuffers(1, &VBO_vertices);
@@ -105,7 +106,7 @@ int main() {
 
   glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 view =
-      glm::lookAt(glm::vec3(-2, 6, 5), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+      glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0), glm::vec3(0, 1, 0));
   glm::mat4 proj =
       glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
 
@@ -116,7 +117,7 @@ int main() {
     // background color
     glClearColor(0.3f, 0.4f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    
     // activate shader
     shader.use();
     shader.setMat4("model", model);
@@ -125,7 +126,7 @@ int main() {
 
     // render container
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDrawArrays(GL_TRIANGLES, 0, 41040);
 
     // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
     // etc.)
