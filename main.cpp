@@ -7,10 +7,14 @@
 #include <GLFW/glfw3.h>
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <obj.h>
 #include <shader.h>
-#include <tiny_obj_loader.h>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <assert.h>
 
 void dump_framebuffer_to_ppm(std::string prefix, uint32_t width,
                              uint32_t height);
@@ -22,13 +26,18 @@ void process_input(GLFWwindow *window);
 bool parse_obj_file(const char *obj_path, std::vector<float> *vbuffer,
                     std::vector<float> *nbuffer);
 
+std::vector<Obj> load_face_objs(const std::string faces_path);
+std::vector<float> get_weights(const char *file_path);
+std::vector<float> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
+                               std::vector<float> weights);
+
 static uint32_t ss_id = 0;
 
 const unsigned int SCR_WIDTH = 1024;
 const unsigned int SCR_HEIGHT = 768;
 
 int main() {
-  // glfw: initialize and configure
+  // initialize and configure
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -49,7 +58,7 @@ int main() {
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-  // glad: load all OpenGL function pointers
+  // load all OpenGL function pointers
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     std::cout << "Failed to initialize GLAD" << std::endl;
     return -1;
@@ -59,22 +68,19 @@ int main() {
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
-  const char *obj_path = "data/faces/28.obj";
+  // load base and file objs
+  Obj base_obj("data/faces/base.obj");
+  std::vector<Obj> face_objs = load_face_objs("data/faces/");
+  std::vector<float> weights = get_weights("data/weights/7.weights");
 
-  std::vector<float> vbuffer;
-  std::vector<float> nbuffer;
-
-  bool parsed = parse_obj_file(obj_path, &vbuffer, &nbuffer);
-  if (!parsed) {
-    return -1;
-  }
-
-  std::cout << vbuffer.size() << std::endl;
+  // blend shpae
+  std::vector<float> vbuffer = blend_shape(base_obj, face_objs, weights);
+  std::vector<float> nbuffer = base_obj.getNormals();
 
   GLuint VAO, VBO_vertices, VBO_normals;
   glGenVertexArrays(1, &VAO);
@@ -105,8 +111,8 @@ int main() {
   glEnableVertexAttribArray(normal_loc);
 
   glm::mat4 model = glm::mat4(1.0f);
-  glm::mat4 view =
-      glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0), glm::vec3(0, 1, 0));
+  glm::mat4 view = glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0),
+                               glm::vec3(0, 1, 0));
   glm::mat4 proj =
       glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
 
@@ -117,7 +123,7 @@ int main() {
     // background color
     glClearColor(0.3f, 0.4f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
+
     // activate shader
     shader.use();
     shader.setMat4("model", model);
@@ -126,50 +132,90 @@ int main() {
 
     // render container
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 41040);
+    glDrawArrays(GL_TRIANGLES, 0, vbuffer.size());
 
-    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
-    // etc.)
+    // swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  // glfw: terminate, clearing all previously allocated GLFW resources.
+  // terminate, clearing all previously allocated GLFW resources.
   glfwTerminate();
   return 0;
 }
 
-bool parse_obj_file(const char *obj_path, std::vector<float> *vbuffer,
-                    std::vector<float> *nbuffer) {
-  tinyobj::attrib_t attrib;
-  std::vector<tinyobj::shape_t> shapes;
-  std::vector<tinyobj::material_t> materials;
+std::vector<Obj> load_face_objs(const std::string faces_path) {
+  const int num_of_faces = 35;
 
-  std::string warn, err;
-
-  bool bTriangulate = true;
-  bool bSuc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
-                               obj_path, nullptr, bTriangulate);
-
-  if (!bSuc) {
-    std::cout << "tinyobj error:" << err.c_str() << std::endl;
-    return false;
+  std::vector<Obj> face_objs;
+  for (int i = 0; i < num_of_faces; i++) {
+    std::string file_name = faces_path + std::to_string(i) + ".obj";
+    Obj obj(file_name.c_str());
+    face_objs.push_back(obj);
   }
 
-  for (auto face : shapes[0].mesh.indices) {
-    int vid = face.vertex_index;
-    int nid = face.normal_index;
+  return face_objs;
+}
 
-    vbuffer->push_back(attrib.vertices[vid * 3]);
-    vbuffer->push_back(attrib.vertices[vid * 3 + 1]);
-    vbuffer->push_back(attrib.vertices[vid * 3 + 2]);
+std::vector<float> get_weights(const char *file_path) {
+  std::vector<float> weights;
 
-    nbuffer->push_back(attrib.normals[nid * 3]);
-    nbuffer->push_back(attrib.normals[nid * 3 + 1]);
-    nbuffer->push_back(attrib.normals[nid * 3 + 2]);
+  std::ifstream weights_file(file_path);
+
+  std::string line;
+  while (std::getline(weights_file, line)) {
+    std::istringstream line_stream(line);
+    float weight;
+
+    while (line_stream >> weight) {
+      weights.push_back(weight);
+    }
   }
 
-  return true;
+  weights_file.close();
+  return weights;
+}
+
+std::vector<float> subtract_vertices(const std::vector<float> v1,
+                                     const std::vector<float> v2) {
+  assert(v1.size() == v2.size());
+
+  std::vector<float> vertices_diff;
+  for (int i = 0; i < v1.size(); i++) {
+    vertices_diff.push_back(v1[i] - v2[i]);
+  }
+
+  return vertices_diff;
+}
+
+void add_vertices(std::vector<float> &v1, const std::vector<float> v2) {
+  assert(v1.size() == v2.size());
+
+  for (int i = 0; i < v1.size(); i++) {
+    v1[i] += v2[i];
+  }
+}
+
+void scale_vertices(std::vector<float> &v, const float value) {
+  for (int i = 0; i < v.size(); i++) {
+    v[i] *= value;
+  }
+}
+
+std::vector<float> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
+                               std::vector<float> weights) {
+  std::vector<float> base_vertices = base_obj.getVertices();
+  std::vector<float> new_shape = base_vertices;
+
+  for (int i = 0; i < face_objs.size(); i++) {
+    std::vector<float> vertices_diff =
+        subtract_vertices(face_objs[i].getVertices(), base_vertices);
+      
+    scale_vertices(vertices_diff, weights[i]);
+    add_vertices(new_shape, vertices_diff);
+  }
+
+  return new_shape;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this
