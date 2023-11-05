@@ -180,9 +180,9 @@ std::vector<float> subtract_vertices(const std::vector<float> v1,
                                      const std::vector<float> v2) {
   assert(v1.size() == v2.size());
 
-  std::vector<float> vertices_diff;
+  std::vector<float> vertices_diff(v1.size());
   for (int i = 0; i < v1.size(); i++) {
-    vertices_diff.push_back(v1[i] - v2[i]);
+    vertices_diff[i] = v1[i] - v2[i];
   }
 
   return vertices_diff;
