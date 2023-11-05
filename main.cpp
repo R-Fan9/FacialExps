@@ -68,7 +68,7 @@ int main() {
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
@@ -76,7 +76,7 @@ int main() {
   // load base and file objs
   Obj base_obj("data/faces/base.obj");
   std::vector<Obj> face_objs = load_face_objs("data/faces/");
-  std::vector<float> weights = get_weights("data/weights/7.weights");
+  std::vector<float> weights = get_weights("data/weights/4.weights");
 
   // blend shpae
   std::vector<float> vbuffer = blend_shape(base_obj, face_objs, weights);
@@ -150,7 +150,7 @@ std::vector<Obj> load_face_objs(const std::string faces_path) {
   std::vector<Obj> face_objs;
   for (int i = 0; i < num_of_faces; i++) {
     std::string file_name = faces_path + std::to_string(i) + ".obj";
-    Obj obj(file_name.c_str());
+    Obj obj(file_name);
     face_objs.push_back(obj);
   }
 

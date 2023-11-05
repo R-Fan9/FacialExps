@@ -6,12 +6,12 @@
 class Obj {
 public:
   // constructor generates Obj class on the fly
-  Obj(const char *file_path) : obj_path(file_path) {
+  Obj(const std::string &file_path) : obj_path(file_path) {
     std::string warn, err;
 
     bool bTriangulate = true;
     bool bSuc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
-                                 file_path, nullptr, bTriangulate);
+                                 obj_path.c_str(), nullptr, bTriangulate);
 
     if (!bSuc) {
       throw std::runtime_error("tinyobj error:" + err);
