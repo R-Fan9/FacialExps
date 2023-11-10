@@ -21,10 +21,13 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
 void process_input(GLFWwindow *window);
 
+bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
+                    std::vector<tinyobj::real_t> &nbuffer);
+
 std::vector<Obj> load_face_objs(const std::string faces_path);
 std::vector<tinyobj::real_t> get_weights(const char *file_path);
 std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<tinyobj::real_t> weights);
+                                         std::vector<tinyobj::real_t> weights);
 
 static uint32_t ss_id = 0;
 
@@ -66,7 +69,7 @@ int main()
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   // build and compile shader program
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
@@ -74,11 +77,11 @@ int main()
   // load base and file objs
   Obj base_obj("data/faces/base.obj");
   std::vector<Obj> face_objs = load_face_objs("data/faces/");
-  std::vector<tinyobj::real_t> weights = get_weights("data/weights/12.weights");
+  std::vector<tinyobj::real_t> weights = get_weights("data/weights/4.weights");
 
   // blend shpae
-  std::vector<tinyobj::real_t> vbuffer = blend_shape(base_obj, face_objs, weights);
-  // std::vector<tinyobj::real_t> vbuffer = face_objs[16].getVertices();
+  // std::vector<tinyobj::real_t> vbuffer = blend_shape(base_obj, face_objs, weights);
+  std::vector<tinyobj::real_t> vbuffer = face_objs[1].getVertices();
   std::vector<tinyobj::real_t> nbuffer = base_obj.getNormals();
 
   GLuint VAO, VBO_vertices, VBO_normals;
@@ -112,6 +115,8 @@ int main()
   glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 view = glm::lookAt(glm::vec3(30, 90, 80), glm::vec3(0, 90, 0),
                                glm::vec3(0, 1, 0));
+  // glm::mat4 view = glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0),
+  //                              glm::vec3(0, 1, 0));
   glm::mat4 proj =
       glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
 
@@ -142,6 +147,42 @@ int main()
   // terminate, clearing all previously allocated GLFW resources.
   glfwTerminate();
   return 0;
+}
+
+bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
+                    std::vector<tinyobj::real_t> &nbuffer)
+{
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string warn, err;
+
+  bool bTriangulate = true;
+  bool bSuc = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+                               obj_path, nullptr, bTriangulate);
+
+  if (!bSuc)
+  {
+    std::cout << "tinyobj error:" << err.c_str() << std::endl;
+    return false;
+  }
+
+  for (auto face : shapes[0].mesh.indices)
+  {
+    int vid = face.vertex_index;
+    int nid = face.normal_index;
+
+    vbuffer.push_back(attrib.vertices[vid * 3]);
+    vbuffer.push_back(attrib.vertices[vid * 3 + 1]);
+    vbuffer.push_back(attrib.vertices[vid * 3 + 2]);
+
+    nbuffer.push_back(attrib.normals[nid * 3]);
+    nbuffer.push_back(attrib.normals[nid * 3 + 1]);
+    nbuffer.push_back(attrib.normals[nid * 3 + 2]);
+  }
+
+  return true;
 }
 
 std::vector<Obj> load_face_objs(const std::string faces_path)
@@ -182,7 +223,7 @@ std::vector<tinyobj::real_t> get_weights(const char *file_path)
 }
 
 std::vector<tinyobj::real_t> subtract_vertices(const std::vector<tinyobj::real_t> v1,
-                                      const std::vector<tinyobj::real_t> v2)
+                                               const std::vector<tinyobj::real_t> v2)
 {
   assert(v1.size() == v2.size());
 
@@ -214,7 +255,7 @@ void scale_vertices(std::vector<tinyobj::real_t> &v, const tinyobj::real_t value
 }
 
 std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<tinyobj::real_t> weights)
+                                         std::vector<tinyobj::real_t> weights)
 {
   std::vector<tinyobj::real_t> base_vertices = base_obj.getVertices();
   std::vector<tinyobj::real_t> result_vertices = base_vertices;
