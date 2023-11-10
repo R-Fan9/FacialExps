@@ -22,9 +22,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void process_input(GLFWwindow *window);
 
 std::vector<Obj> load_face_objs(const std::string faces_path);
-std::vector<double> get_weights(const char *file_path);
-std::vector<double> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<double> weights);
+std::vector<tinyobj::real_t> get_weights(const char *file_path);
+std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
+                                std::vector<tinyobj::real_t> weights);
 
 static uint32_t ss_id = 0;
 
@@ -74,12 +74,12 @@ int main()
   // load base and file objs
   Obj base_obj("data/faces/base.obj");
   std::vector<Obj> face_objs = load_face_objs("data/faces/");
-  std::vector<double> weights = get_weights("data/weights/4.weights");
+  std::vector<tinyobj::real_t> weights = get_weights("data/weights/12.weights");
 
   // blend shpae
-  // std::vector<double> vbuffer = blend_shape(base_obj, face_objs, weights);
-  std::vector<double> vbuffer = face_objs[16].getVertices();
-  std::vector<double> nbuffer = base_obj.getNormals();
+  std::vector<tinyobj::real_t> vbuffer = blend_shape(base_obj, face_objs, weights);
+  // std::vector<tinyobj::real_t> vbuffer = face_objs[16].getVertices();
+  std::vector<tinyobj::real_t> nbuffer = base_obj.getNormals();
 
   GLuint VAO, VBO_vertices, VBO_normals;
   glGenVertexArrays(1, &VAO);
@@ -88,29 +88,29 @@ int main()
   // bind vertex array to vertex buffer
   glGenBuffers(1, &VBO_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, VBO_vertices);
-  glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(double), &vbuffer[0],
+  glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(tinyobj::real_t), &vbuffer[0],
                GL_STATIC_DRAW);
 
   // position attribute
   GLuint vertex_loc = shader.getAttribLocation("aPos");
-  glVertexAttribPointer(vertex_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(double),
+  glVertexAttribPointer(vertex_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
                         (void *)0);
   glEnableVertexAttribArray(vertex_loc);
 
   // bind normal array to normal buffer
   glGenBuffers(1, &VBO_normals);
   glBindBuffer(GL_ARRAY_BUFFER, VBO_normals);
-  glBufferData(GL_ARRAY_BUFFER, nbuffer.size() * sizeof(double), &nbuffer[0],
+  glBufferData(GL_ARRAY_BUFFER, nbuffer.size() * sizeof(tinyobj::real_t), &nbuffer[0],
                GL_STATIC_DRAW);
 
   // normal attribute
   GLuint normal_loc = shader.getAttribLocation("aNormal");
-  glVertexAttribPointer(normal_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(double),
+  glVertexAttribPointer(normal_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
                         (void *)0);
   glEnableVertexAttribArray(normal_loc);
 
   glm::mat4 model = glm::mat4(1.0f);
-  glm::mat4 view = glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0),
+  glm::mat4 view = glm::lookAt(glm::vec3(30, 90, 80), glm::vec3(0, 90, 0),
                                glm::vec3(0, 1, 0));
   glm::mat4 proj =
       glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
@@ -159,9 +159,9 @@ std::vector<Obj> load_face_objs(const std::string faces_path)
   return face_objs;
 }
 
-std::vector<double> get_weights(const char *file_path)
+std::vector<tinyobj::real_t> get_weights(const char *file_path)
 {
-  std::vector<double> weights;
+  std::vector<tinyobj::real_t> weights;
 
   std::ifstream weights_file(file_path);
 
@@ -169,7 +169,7 @@ std::vector<double> get_weights(const char *file_path)
   while (std::getline(weights_file, line))
   {
     std::istringstream line_stream(line);
-    double weight;
+    tinyobj::real_t weight;
 
     while (line_stream >> weight)
     {
@@ -181,12 +181,12 @@ std::vector<double> get_weights(const char *file_path)
   return weights;
 }
 
-std::vector<double> subtract_vertices(const std::vector<double> v1,
-                                      const std::vector<double> v2)
+std::vector<tinyobj::real_t> subtract_vertices(const std::vector<tinyobj::real_t> v1,
+                                      const std::vector<tinyobj::real_t> v2)
 {
   assert(v1.size() == v2.size());
 
-  std::vector<double> vertices_diff(v1.size());
+  std::vector<tinyobj::real_t> vertices_diff(v1.size());
   for (int i = 0; i < v1.size(); i++)
   {
     vertices_diff[i] = v1[i] - v2[i];
@@ -195,7 +195,7 @@ std::vector<double> subtract_vertices(const std::vector<double> v1,
   return vertices_diff;
 }
 
-void add_vertices(std::vector<double> &v1, const std::vector<double> v2)
+void add_vertices(std::vector<tinyobj::real_t> &v1, const std::vector<tinyobj::real_t> v2)
 {
   assert(v1.size() == v2.size());
 
@@ -205,7 +205,7 @@ void add_vertices(std::vector<double> &v1, const std::vector<double> v2)
   }
 }
 
-void scale_vertices(std::vector<double> &v, const double value)
+void scale_vertices(std::vector<tinyobj::real_t> &v, const tinyobj::real_t value)
 {
   for (int i = 0; i < v.size(); i++)
   {
@@ -213,22 +213,38 @@ void scale_vertices(std::vector<double> &v, const double value)
   }
 }
 
-std::vector<double> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<double> weights)
+std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
+                                std::vector<tinyobj::real_t> weights)
 {
-  std::vector<double> base_vertices = base_obj.getVertices();
-  std::vector<double> new_shape = base_vertices;
-
-  for (int i = 0; i < face_objs.size(); i++)
+  std::vector<tinyobj::real_t> base_vertices = base_obj.getVertices();
+  std::vector<tinyobj::real_t> result_vertices = base_vertices;
+  for (size_t i = 0; i < face_objs.size(); i++)
   {
-    std::vector<double> vertices_diff =
-        subtract_vertices(face_objs[i].getVertices(), base_vertices);
+    std::vector<tinyobj::real_t> obj_vertices = face_objs[i].getVertices();
 
-    scale_vertices(vertices_diff, weights[i]);
-    add_vertices(new_shape, vertices_diff);
+    assert(obj_vertices.size() == base_vertices.size());
+    for (size_t j = 0; j < obj_vertices.size(); j++)
+    {
+
+      result_vertices[j] += weights[i] * (obj_vertices[j] - base_vertices[j]);
+    }
   }
 
-  return new_shape;
+  return result_vertices;
+
+  // std::vector<tinyobj::real_t> base_vertices = base_obj.getVertices();
+  // std::vector<tinyobj::real_t> new_shape = base_vertices;
+
+  // for (int i = 0; i < face_objs.size(); i++)
+  // {
+  //   std::vector<tinyobj::real_t> vertices_diff =
+  //       subtract_vertices(face_objs[i].getVertices(), base_vertices);
+
+  //   scale_vertices(vertices_diff, weights[i]);
+  //   add_vertices(new_shape, vertices_diff);
+  // }
+
+  // return new_shape;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this
