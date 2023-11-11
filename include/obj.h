@@ -15,8 +15,8 @@ public:
   Obj(const std::string &file_path) : obj_path(file_path)
   {
     tinyobj::ObjReaderConfig config;
-    config.triangulate = true;
-    config.triangulation_method = "earcut";
+    config.triangulate = false;
+    config.triangulation_method = "simple";
 
     tinyobj::ObjReader reader;
 

@@ -85,8 +85,8 @@ int main()
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
   // load base and file objs
-  Obj base_obj("data/faces/base.obj");
-  std::vector<Obj> face_objs = load_face_objs("data/faces/");
+  Obj base_obj("data/test/base_t.obj");
+  std::vector<Obj> face_objs = load_face_objs("data/test/");
   std::vector<tinyobj::real_t> weights = get_weights("data/weights/4.weights");
 
   face_objs.insert(face_objs.begin(), base_obj);
@@ -228,7 +228,7 @@ bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
 std::vector<Obj> load_face_objs(const std::string faces_path)
 {
   std::vector<Obj> face_objs;
-  std::string file_name = faces_path + std::to_string(1) + ".obj";
+  std::string file_name = faces_path + std::to_string(1) + "_t.obj";
   Obj obj(file_name);
   face_objs.push_back(obj);
   // for (int i = 0; i < num_faces; i++)
