@@ -24,7 +24,7 @@ void process_input(GLFWwindow *window);
 std::vector<Obj> load_face_objs(const std::string faces_path);
 std::vector<tinyobj::real_t> get_weights(const char *file_path);
 std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<tinyobj::real_t> weights);
+                                         std::vector<tinyobj::real_t> weights);
 
 static uint32_t ss_id = 0;
 
@@ -72,13 +72,16 @@ int main()
   Shader shader("shaders/shader.vs", "shaders/shader.fs");
 
   // load base and file objs
-  Obj base_obj("data/faces/base.obj");
-  std::vector<Obj> face_objs = load_face_objs("data/faces/");
-  std::vector<tinyobj::real_t> weights = get_weights("data/weights/12.weights");
+  Obj base_obj("data/faces/test/base_t.obj");
+  std::vector<Obj> face_objs = load_face_objs("data/faces/test/");
+  std::vector<tinyobj::real_t> weights = get_weights("data/weights/11.weights");
+  // Obj base_obj("data/test/cubes/cube.obj");
+  // std::vector<Obj> face_objs = load_face_objs("data/test/cubes/");
+  // std::vector<tinyobj::real_t> weights = get_weights("data/test/weights/0.weights");
 
   // blend shpae
   std::vector<tinyobj::real_t> vbuffer = blend_shape(base_obj, face_objs, weights);
-  // std::vector<tinyobj::real_t> vbuffer = face_objs[16].getVertices();
+  // std::vector<tinyobj::real_t> vbuffer = face_objs[1].getVertices();
   std::vector<tinyobj::real_t> nbuffer = base_obj.getNormals();
 
   GLuint VAO, VBO_vertices, VBO_normals;
@@ -110,8 +113,10 @@ int main()
   glEnableVertexAttribArray(normal_loc);
 
   glm::mat4 model = glm::mat4(1.0f);
-  glm::mat4 view = glm::lookAt(glm::vec3(30, 90, 80), glm::vec3(0, 90, 0),
+  glm::mat4 view = glm::lookAt(glm::vec3(20, 50, 200), glm::vec3(0, 90, 0),
                                glm::vec3(0, 1, 0));
+
+  // glm::mat4 view = glm::lookAt(glm::vec3(-1, 4, 5), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
   glm::mat4 proj =
       glm::perspective(glm::radians(60.0f), 4.0f / 3.0f, 0.1f, 1000.0f);
 
@@ -147,11 +152,12 @@ int main()
 std::vector<Obj> load_face_objs(const std::string faces_path)
 {
   const int num_of_faces = 35;
+  // const int num_of_faces = 2;
 
   std::vector<Obj> face_objs;
   for (int i = 0; i < num_of_faces; i++)
   {
-    std::string file_name = faces_path + std::to_string(i) + ".obj";
+    std::string file_name = faces_path + std::to_string(i) + "_t.obj";
     Obj obj(file_name);
     face_objs.push_back(obj);
   }
@@ -182,7 +188,7 @@ std::vector<tinyobj::real_t> get_weights(const char *file_path)
 }
 
 std::vector<tinyobj::real_t> subtract_vertices(const std::vector<tinyobj::real_t> v1,
-                                      const std::vector<tinyobj::real_t> v2)
+                                               const std::vector<tinyobj::real_t> v2)
 {
   assert(v1.size() == v2.size());
 
@@ -214,10 +220,18 @@ void scale_vertices(std::vector<tinyobj::real_t> &v, const tinyobj::real_t value
 }
 
 std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
-                                std::vector<tinyobj::real_t> weights)
+                                         std::vector<tinyobj::real_t> weights)
 {
   std::vector<tinyobj::real_t> base_vertices = base_obj.getVertices();
   std::vector<tinyobj::real_t> result_vertices = base_vertices;
+  // std::vector<tinyobj::real_t> obj_vertices = face_objs[1].getVertices();
+
+  // for (size_t i = 0; i < obj_vertices.size(); i++)
+  // {
+  //   result_vertices[i] += 1.5 * (obj_vertices[i] - base_vertices[i]);
+  // }
+
+  // std::vector<tinyobj::real_t> result_vertices(base_vertices.size());
   for (size_t i = 0; i < face_objs.size(); i++)
   {
     std::vector<tinyobj::real_t> obj_vertices = face_objs[i].getVertices();
@@ -229,6 +243,20 @@ std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_obj
       result_vertices[j] += weights[i] * (obj_vertices[j] - base_vertices[j]);
     }
   }
+
+  // for (size_t i = 0; i < result_vertices.size(); i++)
+  // {
+  //   result_vertices[i] += base_vertices[i];
+  // }
+
+  // for (auto v : result_vertices)
+  // {
+  //   if (v != 0)
+  //   {
+  //     std::cout << v << "\n"
+  //               << std::endl;
+  //   }
+  // }
 
   return result_vertices;
 
