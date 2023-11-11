@@ -24,10 +24,20 @@ void process_input(GLFWwindow *window);
 bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
                     std::vector<tinyobj::real_t> &nbuffer);
 
+void setup_faces(std::vector<Obj> face_objs);
+
 std::vector<Obj> load_face_objs(const std::string faces_path);
 std::vector<tinyobj::real_t> get_weights(const char *file_path);
 std::vector<tinyobj::real_t> blend_shape(Obj base_obj, std::vector<Obj> face_objs,
                                          std::vector<tinyobj::real_t> weights);
+
+bool keyProcessed = true;      // Flag to track key processing
+double lastKeyPressTime = 0.0; // Track the last key press time
+const double delayTime = 0.2;  // Adjust the delay time as needed (in seconds)
+
+const int num_faces = 2;
+std::vector<GLuint> VAOs(num_faces);
+std::vector<GLuint> VBOs(num_faces);
 
 static uint32_t ss_id = 0;
 
@@ -79,38 +89,16 @@ int main()
   std::vector<Obj> face_objs = load_face_objs("data/faces/");
   std::vector<tinyobj::real_t> weights = get_weights("data/weights/4.weights");
 
+  face_objs.insert(face_objs.begin(), base_obj);
+
+  setup_faces(face_objs);
+
+  int num_vertices = base_obj.getVertices().size();
+
   // blend shpae
   // std::vector<tinyobj::real_t> vbuffer = blend_shape(base_obj, face_objs, weights);
-  std::vector<tinyobj::real_t> vbuffer = face_objs[1].getVertices();
-  std::vector<tinyobj::real_t> nbuffer = base_obj.getNormals();
-
-  GLuint VAO, VBO_vertices, VBO_normals;
-  glGenVertexArrays(1, &VAO);
-  glBindVertexArray(VAO);
-
-  // bind vertex array to vertex buffer
-  glGenBuffers(1, &VBO_vertices);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO_vertices);
-  glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(tinyobj::real_t), &vbuffer[0],
-               GL_STATIC_DRAW);
-
-  // position attribute
-  GLuint vertex_loc = shader.getAttribLocation("aPos");
-  glVertexAttribPointer(vertex_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
-                        (void *)0);
-  glEnableVertexAttribArray(vertex_loc);
-
-  // bind normal array to normal buffer
-  glGenBuffers(1, &VBO_normals);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO_normals);
-  glBufferData(GL_ARRAY_BUFFER, nbuffer.size() * sizeof(tinyobj::real_t), &nbuffer[0],
-               GL_STATIC_DRAW);
-
-  // normal attribute
-  GLuint normal_loc = shader.getAttribLocation("aNormal");
-  glVertexAttribPointer(normal_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
-                        (void *)0);
-  glEnableVertexAttribArray(normal_loc);
+  // std::vector<tinyobj::real_t> vbuffer = face_objs[1].getVertices();
+  // std::vector<tinyobj::real_t> nbuffer = base_obj.getNormals();
 
   glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 view = glm::lookAt(glm::vec3(30, 90, 80), glm::vec3(0, 90, 0),
@@ -136,8 +124,8 @@ int main()
     shader.setMat4("projection", proj);
 
     // render container
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, vbuffer.size() / 3);
+    glBindVertexArray(VAOs[ss_id]);
+    glDrawArrays(GL_TRIANGLES, 0, num_vertices / 3);
 
     // swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
     glfwSwapBuffers(window);
@@ -147,6 +135,58 @@ int main()
   // terminate, clearing all previously allocated GLFW resources.
   glfwTerminate();
   return 0;
+}
+
+void setup_faces(std::vector<Obj> face_objs)
+{
+  glGenVertexArrays(num_faces, &VAOs[0]);
+  glGenBuffers(num_faces, &VBOs[0]);
+
+  for (size_t i = 0; i < num_faces; i++)
+  {
+    glBindVertexArray(VAOs[i]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
+
+    std::vector<tinyobj::real_t> vbuffer = face_objs[i].getVertices();
+
+    glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(tinyobj::real_t), &vbuffer[0],
+                 GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
+                          (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+  }
+
+  // GLuint VAO, VBO_vertices, VBO_normals;
+  // glGenVertexArrays(1, &VAO);
+  // glBindVertexArray(VAO);
+
+  // // bind vertex array to vertex buffer
+  // glGenBuffers(1, &VBO_vertices);
+  // glBindBuffer(GL_ARRAY_BUFFER, VBO_vertices);
+  // glBufferData(GL_ARRAY_BUFFER, vbuffer.size() * sizeof(tinyobj::real_t), &vbuffer[0],
+  //              GL_STATIC_DRAW);
+
+  // // position attribute
+  // GLuint vertex_loc = shader.getAttribLocation("aPos");
+  // glVertexAttribPointer(vertex_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
+  //                       (void *)0);
+  // glEnableVertexAttribArray(vertex_loc);
+
+  // // bind normal array to normal buffer
+  // glGenBuffers(1, &VBO_normals);
+  // glBindBuffer(GL_ARRAY_BUFFER, VBO_normals);
+  // glBufferData(GL_ARRAY_BUFFER, nbuffer.size() * sizeof(tinyobj::real_t), &nbuffer[0],
+  //              GL_STATIC_DRAW);
+
+  // // normal attribute
+  // GLuint normal_loc = shader.getAttribLocation("aNormal");
+  // glVertexAttribPointer(normal_loc, 3, GL_DOUBLE, GL_FALSE, 3 * sizeof(tinyobj::real_t),
+  //                       (void *)0);
+  // glEnableVertexAttribArray(normal_loc);
 }
 
 bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
@@ -187,15 +227,16 @@ bool parse_obj_file(const char *obj_path, std::vector<tinyobj::real_t> &vbuffer,
 
 std::vector<Obj> load_face_objs(const std::string faces_path)
 {
-  const int num_of_faces = 35;
-
   std::vector<Obj> face_objs;
-  for (int i = 0; i < num_of_faces; i++)
-  {
-    std::string file_name = faces_path + std::to_string(i) + ".obj";
-    Obj obj(file_name);
-    face_objs.push_back(obj);
-  }
+  std::string file_name = faces_path + std::to_string(1) + ".obj";
+  Obj obj(file_name);
+  face_objs.push_back(obj);
+  // for (int i = 0; i < num_faces; i++)
+  // {
+  //   std::string file_name = faces_path + std::to_string(i) + ".obj";
+  //   Obj obj(file_name);
+  //   face_objs.push_back(obj);
+  // }
 
   return face_objs;
 }
@@ -302,6 +343,22 @@ void process_input(GLFWwindow *window)
     int buffer_width, buffer_height;
     glfwGetFramebufferSize(window, &buffer_width, &buffer_height);
     dump_framebuffer_to_ppm("tmp", buffer_width, buffer_height);
+  }
+
+  double currentTime = glfwGetTime();
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+  {
+    if (!keyProcessed && (currentTime - lastKeyPressTime) < delayTime)
+    {
+      return; // Exit the callback if within the delay time
+    }
+
+    ss_id = (ss_id + 1) % num_faces;
+    std::cout << "Switch to face " << ss_id << std::endl;
+
+    // Update time and flag
+    lastKeyPressTime = currentTime;
+    keyProcessed = false;
   }
 }
 
